@@ -40,20 +40,28 @@ interface DriftAssistAccountFormField {
   awsRegion: string;
 }
 
+interface AccountData {
+  sessionId: string;
+  accountId: string;
+  credentials: {
+    region: string;
+    provider: string;
+    access_key: string;
+    secret_key: string;
+  };
+}
+
 interface DriftAssistAccountDrawerProps {
-  form: FormInstance<DriftAssistAccountFormField>;
-  setDisabledSave: (disabled: boolean) => void;
-  onFinish?: () => void;
-  onSuccess?: () => void;
+  projectId?: string;
+  onAccountSelected?: (accountData: AccountData) => void;
 }
 
 const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
-  form,
-  setDisabledSave,
-  onFinish,
-  onSuccess,
+  projectId,
+  onAccountSelected,
 }) => {
-  const { project } = useParams();
+  const [form] = Form.useForm<DriftAssistAccountFormField>();
+  const project = projectId || useParams().project;
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
@@ -67,13 +75,6 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
     project || ""
   );
 
-  // Form validation
-  useEffect(() => {
-    const hasErrors = form
-      ?.getFieldsError()
-      .filter(({ errors }) => errors.length).length > 0;
-    setDisabledSave(hasErrors);
-  }, [form, setDisabledSave]);
 
   // Initialize form with defaults
   useEffect(() => {
@@ -198,8 +199,19 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
       
       message.success('Successfully connected to AWS!');
       
-      if (onSuccess) onSuccess();
-      if (onFinish) onFinish();
+      // Call the onAccountSelected callback with the account data
+      if (onAccountSelected) {
+        onAccountSelected({
+          sessionId: response.session_id,
+          accountId: selectedAccountId,
+          credentials: {
+            region: accountCredentials.region,
+            provider: accountCredentials.cloud_provider,
+            access_key: accountCredentials.access_key,
+            secret_key: accountCredentials.secret_access_key
+          }
+        });
+      }
       
     } catch (error) {
       console.error('❌ DriftAssistAccountDrawer: AWS connection failed:', error);
@@ -340,7 +352,7 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
               <Button
                 type="primary"
                 onClick={handleCreateAccount}
-                loading={createDriftAssistSecretMutation.isPending}
+                loading={false}
               >
                 Create Account
               </Button>
@@ -364,7 +376,7 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
                 type="primary"
                 icon={<CloudOutlined />}
                 onClick={handleConnectToAWS}
-                loading={getDriftAssistSecretMutation.isLoading || connectToAWSMutation.isPending}
+                loading={getDriftAssistSecretMutation.isLoading || false}
                 size="large"
               >
                 Connect to AWS
