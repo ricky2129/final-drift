@@ -13,7 +13,7 @@ import {
   useConnectToAWS,
   type ConnectAWSRequest
 } from "react-query/driftAssistQueries";
-import { DriftAssistSignInRequest } from "interfaces";
+import { DriftAssistSignInRequest, DriftAssistIntegrationResponse } from "interfaces";
 
 const { Title } = Typography;
 

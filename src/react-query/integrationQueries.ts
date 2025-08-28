@@ -6,6 +6,7 @@ import {
   RepositorySignInRequest,
   UpdateIntegrationRequest,
   DriftAssistSignInRequest,
+  DriftAssistIntegrationResponse,
 } from "interfaces";
 import { useIntegrationService } from "services";
 

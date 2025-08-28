@@ -102,6 +102,19 @@ export interface DriftAssistResponse {
   region: string;
 }
 
+export interface DriftAssistIntegrationResponse {
+  id: number;
+  name: string;
+  infrastructure_id: number;
+  secret_manager_key: string;
+  org_id: number;
+  project_id: number;
+  access: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
 export interface DriftAssistSignInFormFields {
   integration_id?: number;
   name: string;

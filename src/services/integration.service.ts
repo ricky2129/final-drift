@@ -10,6 +10,7 @@ import {
   UpdateIntegrationRequest,
   DriftAssistSignInRequest,
   DriftAssistResponse,
+  DriftAssistIntegrationResponse,
 } from "interfaces";
 import { get, post, put } from "network/query";
 
@@ -153,11 +154,11 @@ const useIntegrationService = () => {
    * Creates a Drift Assist secret.
    *
    * @param {DriftAssistSignInRequest} obj The object containing the drift assist credentials.
-   * @returns {Promise<SecretResponse>} The response from the server.
+   * @returns {Promise<DriftAssistIntegrationResponse>} The response from the server.
    */
   const createDriftAssistSecret = async (
     obj: DriftAssistSignInRequest,
-  ): Promise<SecretResponse> => {
+  ): Promise<DriftAssistIntegrationResponse> => {
     const res = await post(ApiUrl.CREATE_DRIFT_ASSIST_SECRET, obj);
 
     return res || "";
@@ -183,11 +184,11 @@ const useIntegrationService = () => {
    * Fetches a list of drift assist secrets for a given project id.
    *
    * @param {string} project_id - The project id to fetch the drift assist secrets for.
-   * @returns {Promise<Array<SecretResponse>>} A promise that resolves to an array of SecretResponse objects.
+   * @returns {Promise<Array<DriftAssistIntegrationResponse>>} A promise that resolves to an array of DriftAssistIntegrationResponse objects.
    */
   const getDriftAssistIntegrationsByProjectId = async (
     project_id: string,
-  ): Promise<Array<SecretResponse>> => {
+  ): Promise<Array<DriftAssistIntegrationResponse>> => {
     const res = await get(
       resolveUrlParams(ApiUrl.GET_SECRETS_PROJECTID, {
         infrastructure_id: "4", // DriftAssist infrastructure ID
