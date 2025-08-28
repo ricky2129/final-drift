@@ -100,6 +100,12 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
     try {
       console.log('🔧 DriftAssistAccountDrawer: Creating new account...');
       
+      // Validate project ID
+      if (!project || project === "0" || isNaN(parseInt(project))) {
+        message.error('Invalid project ID. Please ensure you are in a valid project context.');
+        return;
+      }
+      
       const values = await form.validateFields([
         'accountName',
         'cloudProvider', 
@@ -108,9 +114,11 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
         'awsRegion'
       ]);
       
+      const projectId = parseInt(project);
+      
       const createRequest: DriftAssistSignInRequest = {
         name: values.accountName,
-        project_id: parseInt(project || "0"),
+        project_id: projectId,
         secret: {
           cloud_provider: values.cloudProvider,
           access_key: values.awsAccessKey,
@@ -144,7 +152,24 @@ const DriftAssistAccountDrawer: React.FC<DriftAssistAccountDrawerProps> = ({
       
     } catch (error) {
       console.error('❌ DriftAssistAccountDrawer: Failed to create account:', error);
-      message.error(error instanceof Error ? error.message : 'Failed to create account');
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to create account';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle axios error response
+        const axiosError = error as any;
+        if (axiosError.response?.data?.detail) {
+          errorMessage = axiosError.response.data.detail;
+        } else if (axiosError.response?.status === 404) {
+          errorMessage = 'API endpoint not found. Please check if the backend is running correctly.';
+        } else if (axiosError.response?.status === 422) {
+          errorMessage = 'Invalid data format. Please check your input values.';
+        }
+      }
+      
+      message.error(errorMessage);
     }
   };
 
