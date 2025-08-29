@@ -85,6 +85,7 @@ export const ApiUrl = {
   GET_SECRET_VALUES: "/integration/get_secret_values/:integration_id",
   CREATE_DRIFT_ASSIST_SECRET: "/integration/createDriftAssistSecret",
   GET_DRIFT_ASSIST_SECRET: "/integration/getDriftAssistSecret/:integration_id",
+  GET_DRIFT_ASSIST_INTEGRATIONS: "/integration/list_secrets/4/:project_id",
 
   //User URLs
   SEARCH_USER: "/usersearchquery",
@@ -167,14 +168,14 @@ export const DashboardAssistUrl = {
 };
 
 export const DriftAssistUrl = {
-  CONNECT_AWS: `${DRIFT_ASSIST_BASE_URL}/api/env/connect`,
-  GET_S3_BUCKETS: `${DRIFT_ASSIST_BASE_URL}/api/s3/buckets`,
-  GET_STATE_FILES: `${DRIFT_ASSIST_BASE_URL}/api/s3/buckets`,
-  ANALYZE_BUCKET: `${DRIFT_ASSIST_BASE_URL}/api/s3/analyze-bucket-state-files`,
-  ANALYZE_STATE_FILE_STREAM: `${DRIFT_ASSIST_BASE_URL}/api/s3/analyze-state-file-stream`,
-  GENERATE_PDF_REPORT: `${DRIFT_ASSIST_BASE_URL}/api/reports/generate-pdf`,
-  LIST_STORED_ANALYSES: `${DRIFT_ASSIST_BASE_URL}/api/analyses/list`,
-  GET_STORED_ANALYSIS: `${DRIFT_ASSIST_BASE_URL}/api/analyses`,
+  CONNECT_AWS: `${BASE_URL}/api/env/connect`,
+  GET_S3_BUCKETS: `${BASE_URL}/api/s3/buckets`,
+  GET_STATE_FILES: `${BASE_URL}/api/s3/buckets`,
+  ANALYZE_BUCKET: `${BASE_URL}/api/s3/analyze-bucket-state-files`,
+  ANALYZE_STATE_FILE_STREAM: `${BASE_URL}/api/s3/analyze-state-file-stream`,
+  GENERATE_PDF_REPORT: `${BASE_URL}/api/reports/generate-pdf`,
+  LIST_STORED_ANALYSES: `${BASE_URL}/api/analyses/list`,
+  GET_STORED_ANALYSIS: `${BASE_URL}/api/analyses`,
 };
 
 

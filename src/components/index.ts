@@ -55,6 +55,7 @@ import {
   IntegrationManager,
   RepositorySignInDrawer,
 } from "./Integrations";
+import { DriftAssistSignInDrawer } from "./DriftAssist";
 import { Loading } from "./Loading";
 import { LoginForm, LoginMFA } from "./Login";
 import { MenuList } from "./MenuList";
@@ -76,6 +77,7 @@ export {
   CloudSignInDrawer,
   RepositorySignInDrawer,
   GremlinSignInDrawer,
+  DriftAssistSignInDrawer,
   RunScans,
   ScanOverview,
   Button,

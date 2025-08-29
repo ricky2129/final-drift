@@ -190,8 +190,7 @@ const useIntegrationService = () => {
     project_id: string,
   ): Promise<Array<DriftAssistIntegrationResponse>> => {
     const res = await get(
-      resolveUrlParams(ApiUrl.GET_SECRETS_PROJECTID, {
-        infrastructure_id: "4", // DriftAssist infrastructure ID
+      resolveUrlParams(ApiUrl.GET_DRIFT_ASSIST_INTEGRATIONS, {
         project_id,
       }),
     );

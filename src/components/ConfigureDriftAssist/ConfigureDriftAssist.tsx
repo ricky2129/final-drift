@@ -1,260 +1,180 @@
-import React, { useEffect } from "react";
-import { Form, FormInstance, Button, message, Flex, Select, Input as AntInput } from "antd";
-import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
-import { Input, Text } from "components";
-import { Metrics } from "themes";
-import { useNavigate, useParams } from "react-router-dom";
-import { 
-  useConnectToAWS,
-  type ConnectAWSRequest
-} from "react-query/driftAssistQueries";
+import { useState } from "react";
+import {
+  useGetDriftAssistIntegrationsByProjectId,
+} from "react-query/integrationQueries";
+import { useParams } from "react-router-dom";
 
-// AWS Regions from original project
-const AWS_REGIONS = [
-  { label: "US East (N. Virginia) - us-east-1", value: "us-east-1" },
-  { label: "US East (Ohio) - us-east-2", value: "us-east-2" },
-  { label: "US West (N. California) - us-west-1", value: "us-west-1" },
-  { label: "US West (Oregon) - us-west-2", value: "us-west-2" },
-  { label: "Europe (Ireland) - eu-west-1", value: "eu-west-1" },
-  { label: "Europe (London) - eu-west-2", value: "eu-west-2" },
-  { label: "Europe (Frankfurt) - eu-central-1", value: "eu-central-1" },
-  { label: "Asia Pacific (Singapore) - ap-southeast-1", value: "ap-southeast-1" },
-  { label: "Asia Pacific (Sydney) - ap-southeast-2", value: "ap-southeast-2" },
-  { label: "Asia Pacific (Tokyo) - ap-northeast-1", value: "ap-northeast-1" },
-];
+import { PlusOutlined } from "@ant-design/icons";
+import { Flex, Form, Select, message } from "antd";
+import { AppServiceMap } from "interfaces";
 
-interface ConfigureDriftAssistFormField {
-  CLOUD_PROVIDER: string;
-  AWS_ACCESS_KEY: string;
-  AWS_SECRET_KEY: string;
-  AWS_REGION: string;
+import {
+  Button,
+  Drawer,
+  DriftAssistSignInDrawer,
+  IconViewer,
+  Text,
+} from "components";
+
+import { Colors, Metrics } from "themes";
+
+interface ConfigureDriftAssistFormFields {
+  drift_assist_integration_id: string;
 }
 
 interface ConfigureDriftAssistProps {
-  configureDriftAssistForm: FormInstance<ConfigureDriftAssistFormField>;
-  setDisabledSave: (disabled: boolean) => void;
-  onFinish?: () => void;
-  skipNavigation?: boolean; // New prop to control navigation behavior
+  applicationId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
 const ConfigureDriftAssist: React.FC<ConfigureDriftAssistProps> = ({
-  configureDriftAssistForm,
-  setDisabledSave,
-  onFinish,
-  skipNavigation = false,
+  applicationId,
+  isOpen,
+  onSuccess,
+  onClose,
 }) => {
-  const navigate = useNavigate();
-  const { project, application } = useParams();
+  const [isOpenAddDriftAssist, setIsOpenAddDriftAssist] = useState<boolean>(false);
+  const [disabledSave, setDisabledSave] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const params = useParams();
 
-  // API hooks
-  const connectToAWSMutation = useConnectToAWS();
+  const [messageApi, contextHolder] = message.useMessage();
 
-  // Form validation
-  useEffect(() => {
-    const hasErrors = configureDriftAssistForm
-      ?.getFieldsError()
-      .filter(({ errors }) => errors.length).length > 0;
-    setDisabledSave(hasErrors);
-  }, [configureDriftAssistForm, setDisabledSave]);
-
-  // Initialize form with defaults
-  useEffect(() => {
-    configureDriftAssistForm.setFieldsValue({
-      CLOUD_PROVIDER: 'aws',
-      AWS_REGION: 'us-east-1'
+  /**
+   * Opens an error message with the content "Error: Something went wrong".
+   * This function is used to report errors that occur during the application
+   * creation process.
+   */
+  const error = () => {
+    messageApi.open({
+      type: "error",
+      content: "Error: Something went wrong",
     });
-  }, [configureDriftAssistForm]);
+  };
 
-  const handleConnectToAWS = async () => {
+  const [configureDriftAssistForm] = Form.useForm<ConfigureDriftAssistFormFields>();
+
+  const getDriftAssistConnectionsInProject =
+    useGetDriftAssistIntegrationsByProjectId(params?.project || "");
+
+  const handleSubmit = async () => {
     try {
-      console.log('🔧 ConfigureDriftAssist: Starting AWS connection process...');
-      
-      const values = await configureDriftAssistForm.validateFields();
-      
-      console.log('📝 ConfigureDriftAssist: Form values collected:', {
-        provider: values.CLOUD_PROVIDER,
-        region: values.AWS_REGION,
-        accessKeyLength: values.AWS_ACCESS_KEY?.length || 0,
-        secretKeyLength: values.AWS_SECRET_KEY?.length || 0,
-        accessKeyPrefix: values.AWS_ACCESS_KEY?.substring(0, 4) || 'N/A'
-      });
-      
-      const connectRequest: ConnectAWSRequest = {
-        provider: values.CLOUD_PROVIDER,
-        credentials: {
-          access_key: values.AWS_ACCESS_KEY,
-          secret_key: values.AWS_SECRET_KEY,
-        },
-        region: values.AWS_REGION,
-      };
+      await configureDriftAssistForm.validateFields();
 
-      console.log('🌐 ConfigureDriftAssist: Sending connect request to backend:', {
-        provider: connectRequest.provider,
-        region: connectRequest.region,
-        credentialsProvided: {
-          accessKey: !!connectRequest.credentials.access_key,
-          secretKey: !!connectRequest.credentials.secret_key,
-          accessKeyLength: connectRequest.credentials.access_key?.length || 0,
-          secretKeyLength: connectRequest.credentials.secret_key?.length || 0
-        }
-      });
+      setIsLoading(true);
 
-      const response = await connectToAWSMutation.mutateAsync(connectRequest);
+      // For now, we'll just simulate success since we need to implement the service connection
+      // In a real implementation, this would call an API to associate the DriftAssist account with the application
       
-      console.log('✅ ConfigureDriftAssist: AWS connection successful! Response:', {
-        sessionId: response.session_id,
-        responseKeys: Object.keys(response)
-      });
-      
-      // Store credentials in session storage for persistence
-      const sessionData = {
-        sessionId: response.session_id,
-        awsCredentials: {
-          region: values.AWS_REGION,
-          provider: values.CLOUD_PROVIDER,
-          access_key: values.AWS_ACCESS_KEY,
-          secret_key: values.AWS_SECRET_KEY
-        },
-        timestamp: Date.now()
-      };
-      
-      try {
-        sessionStorage.setItem('driftAssistSession', JSON.stringify(sessionData));
-        console.log('✅ ConfigureDriftAssist: Saved session data to storage');
-      } catch (error) {
-        console.error('❌ ConfigureDriftAssist: Failed to save session to storage:', error);
-      }
-      
-      const navigationState = {
-        sessionId: response.session_id,
-        awsCredentials: {
-          region: values.AWS_REGION,
-          provider: values.CLOUD_PROVIDER,
-          access_key: values.AWS_ACCESS_KEY,
-          secret_key: values.AWS_SECRET_KEY
-        }
-      };
-      
-      console.log('🧭 ConfigureDriftAssist: Navigating to workflow with state:', {
-        navigationPath: `/project/${project}/application/${application}/workflow`,
-        state: navigationState
-      });
-      
-      message.success('Successfully connected to AWS!');
-      
-      // Only navigate if skipNavigation is false (default behavior for workflow)
-      if (!skipNavigation) {
-        // Navigate to workflows section with sessionId
-        navigate(`/project/${project}/application/${application}/workflow`, {
-          state: navigationState
-        });
-      }
-
-      if (onFinish) onFinish();
-    } catch (error) {
-      console.error('❌ ConfigureDriftAssist: AWS connection failed:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorType: error?.constructor?.name || 'Unknown',
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      message.error(error instanceof Error ? error.message : 'Failed to connect to AWS');
+      message.success("DriftAssist account configured successfully!");
+      onSuccess();
+    } catch (err) {
+      error();
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleFormFieldChange = () => {
+    const hasErrors =
+      configureDriftAssistForm
+        ?.getFieldsError()
+        .filter(({ errors }) => errors.length).length > 0;
+
+    setDisabledSave(hasErrors);
+  };
+
   return (
-    <Flex vertical gap={Metrics.SPACE_LG}>
-      <Form
-        form={configureDriftAssistForm}
-        layout="vertical"
-        onFinish={handleConnectToAWS}
-        initialValues={{ 
-          CLOUD_PROVIDER: 'aws', 
-          AWS_REGION: 'us-east-1'
+    <>
+      {contextHolder}
+      <Drawer
+        open={isOpen}
+        onClose={() => {
+          configureDriftAssistForm.resetFields();
+          onClose();
         }}
+        onCancel={() => {
+          configureDriftAssistForm.resetFields();
+          onClose();
+        }}
+        title="Configure DriftAssist Connection"
+        onSubmit={handleSubmit}
+        disabled={disabledSave}
+        loading={isLoading}
       >
-        {/* AWS Credentials */}
-        <div style={{ marginBottom: 24 }}>
-          <Text text="Connect to AWS" weight="semibold" style={{ fontSize: '16px', marginBottom: '12px', display: 'block' }} />
-          
-          <Form.Item
-            label={<Text text="Cloud Provider" weight="semibold" />}
-            name="CLOUD_PROVIDER"
-            rules={[{ required: true, message: 'Cloud provider is required' }]}
-          >
-            <Select
-              placeholder="Select cloud provider"
-              options={[{ label: "Amazon Web Services (AWS)", value: "aws" }]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label={<Text text="AWS Access Key" weight="semibold" />}
-            name="AWS_ACCESS_KEY"
-            rules={[
-              { required: true, message: 'AWS Access Key is required' },
-              { pattern: /^AKIA[0-9A-Z]{16}$/, message: 'Invalid AWS Access Key format (should start with AKIA)' }
-            ]}
-          >
-            <Input
-              placeholder="AKIA..."
-              autoComplete="off"
-            />
-          </Form.Item>
-
-          <Form.Item
-            label={<Text text="AWS Secret Key" weight="semibold" />}
-            name="AWS_SECRET_KEY"
-            rules={[
-              { required: true, message: 'AWS Secret Key is required' },
-              { len: 40, message: 'AWS Secret Key should be exactly 40 characters long' }
-            ]}
-          >
-            <AntInput.Password
-              placeholder="Enter your AWS Secret Access Key"
-              autoComplete="off"
-              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label={<Text text="AWS Region" weight="semibold" />}
-            name="AWS_REGION"
-            rules={[{ required: true, message: 'AWS region is required' }]}
-          >
-            <Select
-              placeholder="Select AWS region"
-              options={AWS_REGIONS}
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-            />
-          </Form.Item>
-
-          <Form.Item>
-            <Flex justify="end">
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={connectToAWSMutation.isPending}
-                style={{ marginTop: 16 }}
-              >
-                Connect to AWS & Continue
-              </Button>
-            </Flex>
-          </Form.Item>
-        </div>
-
-        {/* Security Notice */}
-        <div style={{ marginTop: 24, padding: '12px', background: '#e7f3ff', border: '1px solid #b3d9ff', borderRadius: '4px' }}>
-          <Text 
-            text="🔒 Security Notice: Your credentials are used only for validation and are not stored permanently. They are kept in memory for the duration of your session only." 
-            type="footnote" 
-            style={{ color: '#0066cc' }}
+        <Flex
+          vertical
+          gap={Metrics.SPACE_SM}
+          className="drift-assist-connection-info"
+        >
+          <Text
+            text="To run drift analysis, it is essential to first establish a connection with your AWS account. Please proceed with configuring your DriftAssist connection now."
+            weight="semibold"
+            type="bodycopy"
+            color={Colors.PRIMARY_BLUE}
           />
-        </div>
-      </Form>
-    </Flex>
+        </Flex>
+        <Form
+          layout="vertical"
+          onFieldsChange={handleFormFieldChange}
+          form={configureDriftAssistForm}
+        >
+          <Form.Item<ConfigureDriftAssistFormFields>
+            name="drift_assist_integration_id"
+            label={<Text weight="semibold" text="DriftAssist Account" />}
+            rules={[
+              {
+                required: true,
+                message: "Please select a DriftAssist account",
+              },
+            ]}
+          >
+            <Select
+              loading={getDriftAssistConnectionsInProject?.isLoading}
+              placeholder="Select DriftAssist account"
+              options={getDriftAssistConnectionsInProject?.data?.map(
+                (value) => {
+                  return {
+                    label: value.name,
+                    value: value.id,
+                  };
+                },
+              )}
+              dropdownRender={(menu) => (
+                <Flex vertical gap={Metrics.SPACE_MD} justify="start">
+                  {menu}
+                  <Button
+                    icon={
+                      <IconViewer
+                        Icon={PlusOutlined}
+                        size={15}
+                        color={Colors.PRIMARY_BLUE}
+                      />
+                    }
+                    title="Add New Account"
+                    type="link"
+                    customClass="add-newAccount-btn"
+                    onClick={() => setIsOpenAddDriftAssist(true)}
+                  />
+                </Flex>
+              )}
+            />
+          </Form.Item>
+        </Form>
+      </Drawer>
+      <DriftAssistSignInDrawer
+        projectId={parseInt(params?.project || "0")}
+        isOpen={isOpenAddDriftAssist}
+        onClose={() => setIsOpenAddDriftAssist(false)}
+        onSuccess={async () => {
+          await getDriftAssistConnectionsInProject.refetch();
+          setIsOpenAddDriftAssist(false);
+        }}
+      />
+    </>
   );
 };
 

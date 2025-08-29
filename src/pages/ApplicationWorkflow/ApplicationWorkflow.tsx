@@ -14,7 +14,7 @@ import { AppServiceMap, AppServiceType } from "interfaces";
 
 import { AddIcon, CodescanIcon, DiagnosticsIcon, ExperimentIcon, ToilAssistIcon, TraceAssistIcon, DashboardAssistIcon, DriftAssistIcon, SLOSLIIcon } from "assets";
 
-import { ConfigureGremlin, IconViewer, Loading, Text } from "components";
+import { ConfigureGremlin, ConfigureDriftAssist, IconViewer, Loading, Text } from "components";
 
 import { useAppNavigation } from "context";
 
@@ -106,6 +106,8 @@ const ApplicationWorkflow: React.FC = () => {
   const { refetchApplicationDetails } = useAppNavigation();
   const [showAddService, setShowAddService] = useState(false);
   const [isOpenConfigureGremlin, setIsOpenConfigureGremlin] =
+    useState<boolean>(false);
+  const [isOpenConfigureDriftAssist, setIsOpenConfigureDriftAssist] =
     useState<boolean>(false);
 
   const navigate = useNavigate();
@@ -355,6 +357,10 @@ const ApplicationWorkflow: React.FC = () => {
                       return; 
                     }
                     if (serviceName === "DriftAssist") {
+                      if (!isAdded) {
+                        setIsOpenConfigureDriftAssist(true);
+                        return;
+                      }
                       setShowDriftAssist(true);
                       setShowTraceAssist(false);
                       setShowToilAssist(false);
@@ -456,6 +462,22 @@ const ApplicationWorkflow: React.FC = () => {
             );
           }}
           onClose={() => setIsOpenConfigureGremlin(false)}
+          applicationId={params?.application}
+        />
+        <ConfigureDriftAssist
+          isOpen={isOpenConfigureDriftAssist}
+          onSuccess={async () => {
+            await refetchApplicationDetails();
+            setIsOpenConfigureDriftAssist(false);
+            await refetchApplicationDetails();
+            navigate(
+              resolveUrlParams(RouteUrl.APPLICATIONS.DRIFT_ASSIST, {
+                project: params.project,
+                application: params?.application,
+              }),
+            );
+          }}
+          onClose={() => setIsOpenConfigureDriftAssist(false)}
           applicationId={params?.application}
         />
       </Col>

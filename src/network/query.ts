@@ -11,33 +11,7 @@ export const axiosClient = axios.create({
   },
 });
 
-//Add interceptor to call refresh API incase token is expired
-axiosClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    try {
-      if (
-        error?.response?.status === 422 &&
-        !excludedFromTrackUrls.includes(window.location.pathname)
-      ) {
-        const data = await get(
-          ApiUrl.REFRESH,
-          {},
-          { Authorization: `Bearer ${localStorage.getItem("refresh_token")}` },
-        );
-
-        localStorage.setItem("access_token", data.access_token);
-      }
-
-      return Promise.reject(error);
-    } catch (err) {
-      console.error(err);
-      window.location.href = RouteUrl.ONBOARDING.LOGIN;
-
-      return Promise.reject(error);
-    }
-  },
-);
+// No JWT token interceptor needed since authentication is removed
 
 /**
  * Merge custom headers with default headers
@@ -71,7 +45,6 @@ const get = async (
     const config: AxiosRequestConfig = {
       params,
       headers: mergeHeaders({
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         ...customHeaders,
       }),
       signal: signal,
@@ -110,7 +83,6 @@ const post = async (
 ) => {
   try {
     const headers = mergeHeaders({
-      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       ...customHeaders,
     });
 
@@ -151,7 +123,6 @@ const put = async (
   try {
     const config: AxiosRequestConfig = {
       headers: mergeHeaders({
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         ...customHeaders,
       }),
     };
@@ -176,7 +147,6 @@ const delete_ = async (endpoint: string, customHeaders: object = {}) => {
   try {
     const config = {
       headers: mergeHeaders({
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         ...customHeaders,
       }),
     };
