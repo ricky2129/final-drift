@@ -159,7 +159,7 @@ const useIntegrationService = () => {
   const createDriftAssistSecret = async (
     obj: DriftAssistSignInRequest,
   ): Promise<DriftAssistIntegrationResponse> => {
-    const res = await post(ApiUrl.CREATE_DRIFT_ASSIST_SECRET, obj);
+    const res = await post(ApiUrl.CREATE_DRIFT_ASSIST_SECRET, obj, "json", { Authorization: "" });
 
     return res || "";
   };
@@ -175,6 +175,8 @@ const useIntegrationService = () => {
   ): Promise<DriftAssistResponse> => {
     const res = await get(
       resolveUrlParams(ApiUrl.GET_DRIFT_ASSIST_SECRET, { integration_id }),
+      {},
+      { Authorization: "" }
     );
 
     return res || "";
@@ -190,9 +192,12 @@ const useIntegrationService = () => {
     project_id: string,
   ): Promise<Array<DriftAssistIntegrationResponse>> => {
     const res = await get(
-      resolveUrlParams(ApiUrl.GET_DRIFT_ASSIST_INTEGRATIONS, {
+      resolveUrlParams(ApiUrl.GET_SECRETS_PROJECTID, {
+        infrastructure_id: "4", // DriftAssist infrastructure ID
         project_id,
       }),
+      {},
+      { Authorization: "" }
     );
 
     return res || "";

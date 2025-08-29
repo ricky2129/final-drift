@@ -3,4 +3,3 @@ export { default as UnifiedResultsDisplay } from './UnifiedResultsDisplay';
 export { default as StoredAnalysesCard } from './StoredAnalysesCard';
 export { default as StoredAnalysisDisplay } from './StoredAnalysisDisplay';
 export { default as DriftAssistAccountDrawer } from './DriftAssistAccountDrawer';
-export { default as DriftAssistSignInDrawer } from './DriftAssistSignInDrawer';
