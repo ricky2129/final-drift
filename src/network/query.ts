@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, RawAxiosRequestHeaders } from "axios";
-import { ApiUrl, RouteUrl, excludedFromTrackUrls } from "constant";
+import { ApiUrl } from "constant";
 
 
 //Create a base Axios instance
