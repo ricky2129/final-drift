@@ -82,6 +82,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     currentAnalysisData,
     analysisResults,
     isAnalyzing,
+    analysisComplete,
     setCurrentAnalysisData,
     setAnalysisResults,
     setIsAnalyzing,
@@ -112,9 +113,18 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       hasAnalysisResults: !!analysisResults && Object.keys(analysisResults).length > 0,
       isAnalyzing,
       hasStarted,
-      currentStep
+      currentStep,
+      analysisComplete
     });
-  }, [currentAnalysisData, analysisResults, isAnalyzing, hasStarted, currentStep]);
+  }, [currentAnalysisData, analysisResults, isAnalyzing, hasStarted, currentStep, analysisComplete]);
+
+  // Auto-advance to results step when analysis completes
+  useEffect(() => {
+    if (analysisComplete && currentStep === 3 && !isAnalyzing) {
+      console.log('🎯 DriftAssist: Analysis completed, advancing to results step');
+      setCurrentStep(4);
+    }
+  }, [analysisComplete, currentStep, isAnalyzing]);
   
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(
     sessionId || initialSessionId
