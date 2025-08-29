@@ -159,7 +159,24 @@ const useIntegrationService = () => {
   const createDriftAssistSecret = async (
     obj: DriftAssistSignInRequest,
   ): Promise<DriftAssistIntegrationResponse> => {
+    console.log('🔧 createDriftAssistSecret: Starting request with payload:', {
+      name: obj.name,
+      project_id: obj.project_id,
+      access: obj.access,
+      secret: {
+        cloud_provider: obj.secret.cloud_provider,
+        region: obj.secret.region,
+        access_key_length: obj.secret.access_key?.length || 0,
+        secret_key_length: obj.secret.secret_access_key?.length || 0
+      },
+      tags_count: obj.tags?.length || 0
+    });
+    
+    console.log('🌐 createDriftAssistSecret: Making POST request to:', ApiUrl.CREATE_DRIFT_ASSIST_SECRET);
+    
     const res = await post(ApiUrl.CREATE_DRIFT_ASSIST_SECRET, obj, "json", { Authorization: "" });
+    
+    console.log('✅ createDriftAssistSecret: Response received:', res);
 
     return res || "";
   };
