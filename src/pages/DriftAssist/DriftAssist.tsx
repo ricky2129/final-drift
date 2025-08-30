@@ -211,22 +211,29 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   }, []);
 
   // API hooks
-  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
-  const { data: stateFilesData, isLoading: isLoadingStateFiles } = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
+  const s3BucketsQuery = useGetS3Buckets(currentSessionId, !!currentSessionId);
+  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = s3BucketsQuery;
+  
+  const stateFilesQuery = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
+  const { data: stateFilesData, isLoading: isLoadingStateFiles } = stateFilesQuery;
+  
   const analyzeBucketMutation = useAnalyzeBucket();
   
   // Stored analyses hooks
-  const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = useListStoredAnalyses(
+  const storedAnalysesQuery = useListStoredAnalyses(
     projectId || '', 
     applicationId || '', 
     !!(projectId && applicationId)
   );
-  const { data: selectedStoredAnalysis, isLoading: isLoadingSelectedAnalysis } = useGetStoredAnalysis(
+  const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = storedAnalysesQuery;
+  
+  const selectedStoredAnalysisQuery = useGetStoredAnalysis(
     projectId || '', 
     applicationId || '', 
     selectedAnalysisId || 0, 
     !!(projectId && applicationId && selectedAnalysisId)
   );
+  const { data: selectedStoredAnalysis, isLoading: isLoadingSelectedAnalysis } = selectedStoredAnalysisQuery;
 
   // Update state files when data changes
   useEffect(() => {
@@ -1247,7 +1254,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                       Quick Selection Presets
                     </Text>
                   </div>
-                  <Space wrap size="large">
+                  <Space wrap size={16}>
                     {presets.map(preset => (
                       <Button
                         key={preset.id}
