@@ -82,9 +82,11 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     currentAnalysisData,
     analysisResults,
     isAnalyzing,
+    analysisComplete,
     setCurrentAnalysisData,
     setAnalysisResults,
     setIsAnalyzing,
+    setAnalysisComplete,
     hasPersistedState,
     loadStateFromStorage,
     hasStarted,
@@ -375,29 +377,49 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       // Set the analysis results for the results tab
       setAnalysisResults(bucketAnalysisResult);
 
-      // Find the first ready state file for streaming analysis
-      const readyFile = bucketAnalysisResult.analysis_results?.find(
-        (file: any) => file.status === 'ready_for_analysis'
+      // Check if analysis is already completed
+      const hasCompletedResults = bucketAnalysisResult.analysis_results?.some(
+        (file: any) => file.status === 'completed' || file.analysis_data
       );
 
-      if (readyFile && readyFile.analysis_data) {
-        setCurrentAnalysisData(readyFile.analysis_data);
-        
-        // Skip loading page and go directly to streaming analysis
-        setCurrentStep(3);
+      if (hasCompletedResults) {
+        // Analysis is already complete, go directly to results
+        setCurrentStep(4);
+        setAnalysisComplete(true);
+        message.success('Analysis completed! View results below.');
         
         // Navigate to workflow tab if callback is provided
         if (onNavigateToWorkflow) {
           setTimeout(() => {
             onNavigateToWorkflow();
-            message.success('Analysis started! Monitoring live progress...');
+            message.success('Analysis completed! Check results in Workflows tab.');
           }, 1000);
-        } else {
-          message.success('Starting drift analysis...');
         }
       } else {
-        setCurrentStep(4); // Move to results step
-        message.warning('No state files ready for analysis. Check results for details.');
+        // Find the first ready state file for streaming analysis
+        const readyFile = bucketAnalysisResult.analysis_results?.find(
+          (file: any) => file.status === 'ready_for_analysis'
+        );
+
+        if (readyFile && readyFile.analysis_data) {
+          setCurrentAnalysisData(readyFile.analysis_data);
+          
+          // Go to streaming analysis for live processing
+          setCurrentStep(3);
+          
+          // Navigate to workflow tab if callback is provided
+          if (onNavigateToWorkflow) {
+            setTimeout(() => {
+              onNavigateToWorkflow();
+              message.success('Analysis started! Monitoring live progress...');
+            }, 1000);
+          } else {
+            message.success('Starting drift analysis...');
+          }
+        } else {
+          setCurrentStep(4); // Move to results step
+          message.warning('No state files ready for analysis. Check results for details.');
+        }
       }
       
     } catch (error) {
