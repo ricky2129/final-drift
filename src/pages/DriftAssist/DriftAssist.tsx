@@ -241,6 +241,11 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     };
   }, []);
 
+  // API hooks
+  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
+  const { data: stateFilesData, isLoading: isLoadingStateFiles } = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
+  const analyzeBucketMutation = useAnalyzeBucket();
+
   // Add mutation state monitoring
   useEffect(() => {
     console.log('🔄 Mutation State Changed:', {
@@ -251,11 +256,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       data: analyzeBucketMutation.data ? 'Has data' : 'No data'
     });
   }, [analyzeBucketMutation.isLoading, analyzeBucketMutation.isError, analyzeBucketMutation.isSuccess]);
-
-  // API hooks
-  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
-  const { data: stateFilesData, isLoading: isLoadingStateFiles } = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
-  const analyzeBucketMutation = useAnalyzeBucket();
   
   // Stored analyses hooks
   const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = useListStoredAnalyses(
