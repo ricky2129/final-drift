@@ -46,6 +46,7 @@ import {
 } from "react-query/driftAssistQueries";
 import { S3StreamingAnalysis, UnifiedResultsDisplay, StoredAnalysesCard, StoredAnalysisDisplay, DriftAssistAccountDrawer } from "components/DriftAssist";
 import { Drawer } from "components";
+import { DriftAssistUrl } from "constant/url.constant";
 import "./DriftAssist.styles.scss";
 
 const { Title, Text, Paragraph } = Typography;
@@ -189,18 +190,67 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       try {
         const driftAssistUrl = (import.meta as any).env?.VITE_DRIFT_ASSIST_URL || 'http://localhost:8004';
         const healthUrl = `${driftAssistUrl}/api/health`;
+        console.log('🏥 Backend health check:', healthUrl);
         const response = await fetch(healthUrl);
         
         if (!response.ok) {
-          console.error('Backend health check failed with status:', response.status);
+          console.error('❌ Backend health check failed with status:', response.status);
+        } else {
+          console.log('✅ Backend health check passed');
         }
       } catch (error) {
-        console.error('Backend health check failed:', error);
+        console.error('❌ Backend health check failed:', error);
       }
     };
     
     checkBackendHealth();
   }, []);
+
+  // Add network request monitoring
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      console.log('🌐 FETCH REQUEST INTERCEPTED:', {
+        url: args[0],
+        method: args[1]?.method || 'GET',
+        headers: args[1]?.headers,
+        body: args[1]?.body ? 'Has body' : 'No body'
+      });
+      
+      return originalFetch.apply(this, args)
+        .then(response => {
+          console.log('📥 FETCH RESPONSE:', {
+            url: response.url,
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
+          return response;
+        })
+        .catch(error => {
+          console.log('❌ FETCH ERROR:', {
+            url: args[0],
+            error: error.message
+          });
+          throw error;
+        });
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
+  // Add mutation state monitoring
+  useEffect(() => {
+    console.log('🔄 Mutation State Changed:', {
+      isLoading: analyzeBucketMutation.isLoading,
+      isError: analyzeBucketMutation.isError,
+      error: analyzeBucketMutation.error?.message,
+      isSuccess: analyzeBucketMutation.isSuccess,
+      data: analyzeBucketMutation.data ? 'Has data' : 'No data'
+    });
+  }, [analyzeBucketMutation.isLoading, analyzeBucketMutation.isError, analyzeBucketMutation.isSuccess]);
 
   // API hooks
   const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
@@ -347,15 +397,38 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   };
 
   const handleAnalyze = async () => {
+    // 🔥 DEBUG: Comprehensive logging at the start
+    console.log('🚀 ANALYZE BUTTON CLICKED!');
+    console.log('📊 Current State:', {
+      currentSessionId,
+      selectedBucket,
+      selectedCount,
+      stateFilesLength: stateFiles.length,
+      currentStep,
+      isAnalyzing,
+      resourceTypesCount: resourceTypes.length
+    });
+    console.log('📋 Selected Resources:', resourceTypes.filter(r => r.selected).map(r => ({ id: r.id, name: r.name })));
+    console.log('📄 State Files:', stateFiles.map(f => ({ key: f.key, size: f.size })));
+    console.log('🔗 API Endpoint:', DriftAssistUrl.ANALYZE_BUCKET);
+
     if (!currentSessionId || !selectedBucket || selectedCount === 0) {
+      console.log('❌ VALIDATION FAILED: Missing requirements', {
+        hasSessionId: !!currentSessionId,
+        hasSelectedBucket: !!selectedBucket,
+        selectedCount
+      });
       message.error('Please select a bucket and at least one resource type');
       return;
     }
 
     if (stateFiles.length === 0) {
+      console.log('❌ VALIDATION FAILED: No state files');
       message.error(`Selected bucket '${selectedBucket}' has no state files.`);
       return;
     }
+
+    console.log('✅ VALIDATION PASSED - Starting API call...');
 
     try {
       setIsAnalyzing(true);
@@ -364,15 +437,26 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         .filter(resource => resource.selected)
         .map(resource => resource.id);
 
+      console.log('🎯 Prepared API call data:', {
+        session_id: currentSessionId,
+        bucket_name: selectedBucket,
+        selected_resources: selectedResources,
+        endpoint: DriftAssistUrl.ANALYZE_BUCKET
+      });
+
       // Show immediate feedback
       message.loading('Initializing drift analysis...', 2);
 
+      console.log('📡 Making API call to analyzeBucketMutation...');
+      
       // First, call the bucket analysis API to prepare all state files
       const bucketAnalysisResult = await analyzeBucketMutation.mutateAsync({
         session_id: currentSessionId,
         bucket_name: selectedBucket,
         selected_resources: selectedResources
       });
+
+      console.log('✅ API call successful! Response:', bucketAnalysisResult);
 
       // Set the analysis results for the results tab
       setAnalysisResults(bucketAnalysisResult);
