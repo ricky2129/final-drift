@@ -145,8 +145,30 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
    */
   const startAnalysis = useCallback(async () => {
     if (!analysisData || isAnalyzing || hasStarted || analysisStartedRef.current) {
+      console.log('🚫 STREAMING ANALYSIS: Skipping analysis start:', {
+        hasAnalysisData: !!analysisData,
+        isAnalyzing,
+        hasStarted,
+        analysisStartedRef: analysisStartedRef.current
+      });
       return;
     }
+
+    console.log('🚀 STREAMING ANALYSIS: Starting analysis for:', fileName);
+    console.log('📊 STREAMING ANALYSIS: Analysis data:', {
+      sessionId: analysisData.sessionId,
+      selectedResources: analysisData.selectedResources,
+      fileName: analysisData.fileName,
+      fileKey: analysisData.fileKey,
+      source: analysisData.source,
+      bucketName: analysisData.bucketName,
+      projectId,
+      applicationId,
+      hasStateData: !!analysisData.stateData,
+      stateDataSize: analysisData.stateData ? JSON.stringify(analysisData.stateData).length : 0,
+      hasTerraformAnalysis: !!analysisData.terraformAnalysis,
+      hasConfigurationSummary: !!analysisData.configurationSummary
+    });
 
     analysisStartedRef.current = true;
     
@@ -157,50 +179,88 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
     setResourceResults({});
     setAnalysisComplete(false);
 
+    const requestPayload = {
+      session_id: analysisData.sessionId,
+      selected_resources: analysisData.selectedResources,
+      state_data: analysisData.stateData,
+      file_name: analysisData.fileName,
+      file_key: analysisData.fileKey,
+      source: analysisData.source,
+      bucket_name: analysisData.bucketName,
+      terraformAnalysis: analysisData.terraformAnalysis,
+      configurationSummary: analysisData.configurationSummary,
+      project_id: projectId,
+      application_id: applicationId
+    };
+
+    const apiUrl = `${apiBaseUrl}/api/s3/analyze-state-file-stream`;
+    
+    console.log('🌐 STREAMING ANALYSIS: Making API request');
+    console.log('📍 STREAMING ANALYSIS: API URL:', apiUrl);
+    console.log('📤 STREAMING ANALYSIS: Request payload keys:', Object.keys(requestPayload));
+    console.log('📤 STREAMING ANALYSIS: Request payload details:', {
+      session_id: requestPayload.session_id,
+      selected_resources: requestPayload.selected_resources,
+      file_name: requestPayload.file_name,
+      project_id: requestPayload.project_id,
+      application_id: requestPayload.application_id,
+      payloadSize: JSON.stringify(requestPayload).length
+    });
+
     try {
-      const response = await fetch(`${apiBaseUrl}/api/s3/analyze-state-file-stream`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: analysisData.sessionId,
-          selected_resources: analysisData.selectedResources,
-          state_data: analysisData.stateData,
-          file_name: analysisData.fileName,
-          file_key: analysisData.fileKey,
-          source: analysisData.source,
-          bucket_name: analysisData.bucketName,
-          terraformAnalysis: analysisData.terraformAnalysis,
-          configurationSummary: analysisData.configurationSummary,
-          project_id: projectId,
-          application_id: applicationId
-        })
+        body: JSON.stringify(requestPayload)
       });
 
+      console.log('📥 STREAMING ANALYSIS: Response received');
+      console.log('📥 STREAMING ANALYSIS: Response status:', response.status);
+      console.log('📥 STREAMING ANALYSIS: Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📥 STREAMING ANALYSIS: Response ok:', response.ok);
+
       if (!response.ok) {
+        console.error('❌ STREAMING ANALYSIS: Request failed with status:', response.status);
+        console.error('❌ STREAMING ANALYSIS: Response status text:', response.statusText);
+        
         let errorData;
         try {
-          errorData = await response.json();
+          const responseText = await response.text();
+          console.error('❌ STREAMING ANALYSIS: Raw error response:', responseText);
+          errorData = JSON.parse(responseText);
+          console.error('❌ STREAMING ANALYSIS: Parsed error data:', errorData);
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+          console.error('❌ STREAMING ANALYSIS: Failed to parse error response:', parseError);
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
         
         if (response.status === 423) {
+          console.warn('⚠️ STREAMING ANALYSIS: Analysis already in progress (423)');
           setError('Analysis already in progress for this file. Please wait for it to complete.');
           return;
         } else if (response.status === 401) {
+          console.warn('⚠️ STREAMING ANALYSIS: Authentication failed (401)');
           setError('Authentication failed. Your session may have expired. Please reconnect to your cloud environment.');
           return;
         } else if (response.status === 403) {
+          console.warn('⚠️ STREAMING ANALYSIS: Access forbidden (403)');
           setError('Access forbidden. Please check your permissions and try again.');
           return;
+        } else if (response.status === 400) {
+          console.error('❌ STREAMING ANALYSIS: Bad request (400)');
+          console.error('❌ STREAMING ANALYSIS: Request payload that failed:', requestPayload);
+        } else if (response.status === 500) {
+          console.error('❌ STREAMING ANALYSIS: Internal server error (500)');
         }
         
         const errorMessage = errorData.details || errorData.error || `Analysis failed with status ${response.status}`;
+        console.error('❌ STREAMING ANALYSIS: Final error message:', errorMessage);
         throw new Error(errorMessage);
       }
+
+      console.log('✅ STREAMING ANALYSIS: Request successful, starting to read stream');
 
       // Handle streaming response
       const reader = response.body?.getReader();
