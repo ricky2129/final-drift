@@ -154,6 +154,17 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
       return;
     }
 
+    // CRITICAL FIX: Validate required URL parameters before proceeding
+    if (!projectId || !applicationId) {
+      console.error('❌ STREAMING ANALYSIS: Missing required URL parameters:', {
+        projectId,
+        applicationId,
+        urlParams: params
+      });
+      setError(`Missing required parameters: project_id (${projectId}) or application_id (${applicationId}). Please ensure you're accessing Drift Assist from the correct application page.`);
+      return;
+    }
+
     console.log('🚀 STREAMING ANALYSIS: Starting analysis for:', fileName);
     console.log('📊 STREAMING ANALYSIS: Analysis data:', {
       sessionId: analysisData.sessionId,
