@@ -82,7 +82,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     currentAnalysisData,
     analysisResults,
     isAnalyzing,
-    analysisComplete,
     setCurrentAnalysisData,
     setAnalysisResults,
     setIsAnalyzing,
@@ -113,18 +112,9 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       hasAnalysisResults: !!analysisResults && Object.keys(analysisResults).length > 0,
       isAnalyzing,
       hasStarted,
-      currentStep,
-      analysisComplete
+      currentStep
     });
-  }, [currentAnalysisData, analysisResults, isAnalyzing, hasStarted, currentStep, analysisComplete]);
-
-  // Auto-advance to results step when analysis completes
-  useEffect(() => {
-    if (analysisComplete && currentStep === 3 && !isAnalyzing) {
-      console.log('🎯 DriftAssist: Analysis completed, advancing to results step');
-      setCurrentStep(4);
-    }
-  }, [analysisComplete, currentStep, isAnalyzing]);
+  }, [currentAnalysisData, analysisResults, isAnalyzing, hasStarted, currentStep]);
   
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(
     sessionId || initialSessionId
@@ -211,29 +201,22 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   }, []);
 
   // API hooks
-  const s3BucketsQuery = useGetS3Buckets(currentSessionId, !!currentSessionId);
-  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = s3BucketsQuery;
-  
-  const stateFilesQuery = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
-  const { data: stateFilesData, isLoading: isLoadingStateFiles } = stateFilesQuery;
-  
+  const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
+  const { data: stateFilesData, isLoading: isLoadingStateFiles } = useGetStateFiles(currentSessionId, selectedBucket || "", !!currentSessionId && !!selectedBucket);
   const analyzeBucketMutation = useAnalyzeBucket();
   
   // Stored analyses hooks
-  const storedAnalysesQuery = useListStoredAnalyses(
+  const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = useListStoredAnalyses(
     projectId || '', 
     applicationId || '', 
     !!(projectId && applicationId)
   );
-  const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = storedAnalysesQuery;
-  
-  const selectedStoredAnalysisQuery = useGetStoredAnalysis(
+  const { data: selectedStoredAnalysis, isLoading: isLoadingSelectedAnalysis } = useGetStoredAnalysis(
     projectId || '', 
     applicationId || '', 
     selectedAnalysisId || 0, 
     !!(projectId && applicationId && selectedAnalysisId)
   );
-  const { data: selectedStoredAnalysis, isLoading: isLoadingSelectedAnalysis } = selectedStoredAnalysisQuery;
 
   // Update state files when data changes
   useEffect(() => {
@@ -362,264 +345,63 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   };
 
   const handleAnalyze = async () => {
-    // 🎯 CLICK EVENT LOGGING: User clicked analyze drift button
-    const clickTimestamp = new Date().toISOString();
-    const requestId = `analyze_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log('🚀 DRIFT ANALYSIS CLICK EVENT STARTED', {
-      requestId,
-      timestamp: clickTimestamp,
-      event: 'analyze_drift_button_clicked',
-      userAction: 'handleAnalyze function triggered',
-      currentState: {
-        currentSessionId,
-        selectedBucket,
-        selectedCount,
-        stateFilesCount: stateFiles.length,
-        currentStep,
-        isAnalyzing
-      }
-    });
-
-    // 🔍 VALIDATION LOGGING: Check prerequisites
-    console.log('🔍 VALIDATION CHECK:', {
-      requestId,
-      checks: {
-        hasSessionId: !!currentSessionId,
-        hasSelectedBucket: !!selectedBucket,
-        hasSelectedResources: selectedCount > 0,
-        hasStateFiles: stateFiles.length > 0
-      }
-    });
-
     if (!currentSessionId || !selectedBucket || selectedCount === 0) {
-      console.log('❌ VALIDATION FAILED: Missing prerequisites', {
-        requestId,
-        missingItems: {
-          sessionId: !currentSessionId,
-          bucket: !selectedBucket,
-          resources: selectedCount === 0
-        }
-      });
       message.error('Please select a bucket and at least one resource type');
       return;
     }
 
     if (stateFiles.length === 0) {
-      console.log('❌ VALIDATION FAILED: No state files', {
-        requestId,
-        selectedBucket,
-        stateFilesCount: stateFiles.length
-      });
       message.error(`Selected bucket '${selectedBucket}' has no state files.`);
       return;
     }
 
-    console.log('✅ VALIDATION PASSED: All prerequisites met', {
-      requestId,
-      proceedingToAnalysis: true
-    });
-
     try {
-      // 🔄 STATE UPDATE LOGGING: Setting analysis state
-      console.log('🔄 STATE UPDATE: Setting isAnalyzing to true', {
-        requestId,
-        previousState: isAnalyzing,
-        newState: true
-      });
       setIsAnalyzing(true);
       
-      // 📋 RESOURCE PREPARATION LOGGING
       const selectedResources = resourceTypes
         .filter(resource => resource.selected)
         .map(resource => resource.id);
 
-      console.log('📋 RESOURCE PREPARATION:', {
-        requestId,
-        selectedResources,
-        resourceDetails: resourceTypes
-          .filter(resource => resource.selected)
-          .map(resource => ({
-            id: resource.id,
-            name: resource.name,
-            category: resource.category,
-            priority: resource.priority
-          }))
-      });
-
-      // 💬 UI FEEDBACK LOGGING
-      console.log('💬 UI FEEDBACK: Showing loading message', {
-        requestId,
-        message: 'Initializing drift analysis...'
-      });
+      // Show immediate feedback
       message.loading('Initializing drift analysis...', 2);
 
-      // 🌐 API CALL PREPARATION LOGGING
-      const apiPayload = {
+      // First, call the bucket analysis API to prepare all state files
+      const bucketAnalysisResult = await analyzeBucketMutation.mutateAsync({
         session_id: currentSessionId,
         bucket_name: selectedBucket,
         selected_resources: selectedResources
-      };
-
-      console.log('🌐 API CALL PREPARATION:', {
-        requestId,
-        endpoint: 'analyzeBucket',
-        payload: apiPayload,
-        payloadSize: JSON.stringify(apiPayload).length,
-        timestamp: new Date().toISOString()
       });
 
-      // 📡 API CALL EXECUTION LOGGING
-      console.log('📡 API CALL STARTING: analyzeBucketMutation.mutateAsync', {
-        requestId,
-        startTime: new Date().toISOString(),
-        apiUrl: `${(import.meta as any).env?.VITE_DRIFT_ASSIST_URL || 'http://localhost:8004'}/api/s3/analyze-bucket-state-files`
-      });
-
-      const apiStartTime = performance.now();
-      const bucketAnalysisResult = await analyzeBucketMutation.mutateAsync(apiPayload);
-      const apiEndTime = performance.now();
-      const apiDuration = apiEndTime - apiStartTime;
-
-      // 📡 API CALL SUCCESS LOGGING
-      console.log('📡 API CALL SUCCESS: analyzeBucketMutation completed', {
-        requestId,
-        endTime: new Date().toISOString(),
-        duration: `${apiDuration.toFixed(2)}ms`,
-        responseSize: JSON.stringify(bucketAnalysisResult).length,
-        responseStructure: {
-          hasAnalysisResults: !!bucketAnalysisResult.analysis_results,
-          analysisResultsCount: bucketAnalysisResult.analysis_results?.length || 0,
-          hasSessionId: !!bucketAnalysisResult.session_id,
-          hasTimestamp: !!bucketAnalysisResult.timestamp
-        }
-      });
-
-      // 💾 STATE UPDATE LOGGING: Setting analysis results
-      console.log('💾 STATE UPDATE: Setting analysis results', {
-        requestId,
-        resultsSummary: {
-          totalFiles: bucketAnalysisResult.analysis_results?.length || 0,
-          readyFiles: bucketAnalysisResult.analysis_results?.filter((file: any) => file.status === 'ready_for_analysis').length || 0,
-          errorFiles: bucketAnalysisResult.analysis_results?.filter((file: any) => file.status === 'error').length || 0
-        }
-      });
+      // Set the analysis results for the results tab
       setAnalysisResults(bucketAnalysisResult);
 
-      // 🔍 READY FILE SEARCH LOGGING
-      console.log('🔍 SEARCHING FOR READY FILES:', {
-        requestId,
-        searchCriteria: 'status === ready_for_analysis',
-        totalFiles: bucketAnalysisResult.analysis_results?.length || 0
-      });
-
+      // Find the first ready state file for streaming analysis
       const readyFile = bucketAnalysisResult.analysis_results?.find(
         (file: any) => file.status === 'ready_for_analysis'
       );
 
       if (readyFile && readyFile.analysis_data) {
-        console.log('✅ READY FILE FOUND:', {
-          requestId,
-          readyFile: {
-            fileName: readyFile.analysis_data?.fileName,
-            hasAnalysisData: !!readyFile.analysis_data,
-            analysisDataKeys: Object.keys(readyFile.analysis_data || {}),
-            status: readyFile.status
-          }
-        });
-
-        // 💾 STATE UPDATE: Setting current analysis data
-        console.log('💾 STATE UPDATE: Setting current analysis data', {
-          requestId,
-          analysisDataSummary: {
-            fileName: readyFile.analysis_data.fileName,
-            sessionId: readyFile.analysis_data.sessionId,
-            bucketName: readyFile.analysis_data.bucketName
-          }
-        });
         setCurrentAnalysisData(readyFile.analysis_data);
         
-        // 🎯 NAVIGATION LOGGING: Moving to streaming analysis
-        console.log('🎯 NAVIGATION: Moving to streaming analysis step', {
-          requestId,
-          previousStep: currentStep,
-          newStep: 3,
-          reason: 'Ready file found with analysis data'
-        });
+        // Skip loading page and go directly to streaming analysis
         setCurrentStep(3);
         
-        // 🔄 WORKFLOW NAVIGATION LOGGING
+        // Navigate to workflow tab if callback is provided
         if (onNavigateToWorkflow) {
-          console.log('🔄 WORKFLOW NAVIGATION: Triggering workflow callback', {
-            requestId,
-            hasCallback: !!onNavigateToWorkflow,
-            delay: '1000ms'
-          });
           setTimeout(() => {
             onNavigateToWorkflow();
             message.success('Analysis started! Monitoring live progress...');
-            console.log('🔄 WORKFLOW NAVIGATION: Callback executed', {
-              requestId,
-              timestamp: new Date().toISOString()
-            });
           }, 1000);
         } else {
-          console.log('💬 UI FEEDBACK: Showing success message (no workflow callback)', {
-            requestId,
-            message: 'Starting drift analysis...'
-          });
           message.success('Starting drift analysis...');
         }
       } else {
-        console.log('⚠️ NO READY FILE FOUND:', {
-          requestId,
-          reason: 'No files with status ready_for_analysis',
-          availableFiles: bucketAnalysisResult.analysis_results?.map((file: any) => ({
-            status: file.status,
-            hasAnalysisData: !!file.analysis_data
-          })) || [],
-          fallbackAction: 'Moving to results step'
-        });
-
-        console.log('🎯 NAVIGATION: Moving to results step (no ready files)', {
-          requestId,
-          previousStep: currentStep,
-          newStep: 4,
-          reason: 'No ready files for streaming analysis'
-        });
-        setCurrentStep(4);
+        setCurrentStep(4); // Move to results step
         message.warning('No state files ready for analysis. Check results for details.');
       }
-
-      console.log('🎉 ANALYSIS INITIATION COMPLETED SUCCESSFULLY', {
-        requestId,
-        totalDuration: `${(performance.now() - apiStartTime).toFixed(2)}ms`,
-        finalState: {
-          currentStep: readyFile ? 3 : 4,
-          hasAnalysisResults: true,
-          hasCurrentAnalysisData: !!readyFile?.analysis_data
-        },
-        timestamp: new Date().toISOString()
-      });
       
     } catch (error) {
-      const errorTimestamp = new Date().toISOString();
-      
-      console.error('❌ ANALYSIS ERROR OCCURRED:', {
-        requestId,
-        errorTimestamp,
-        error: {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          name: error instanceof Error ? error.name : 'UnknownError',
-          stack: error instanceof Error ? error.stack : undefined
-        },
-        context: {
-          currentSessionId,
-          selectedBucket,
-          selectedResources: resourceTypes.filter(r => r.selected).map(r => r.id),
-          stateFilesCount: stateFiles.length
-        }
-      });
+      console.error('Analysis error:', error);
       
       // Enhanced error handling with specific error messages
       let errorMessage = 'Failed to start analysis';
@@ -627,18 +409,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       if (error instanceof Error) {
         // Extract specific error messages based on known error patterns
         const errorText = error.message.toLowerCase();
-        
-        console.log('🔍 ERROR ANALYSIS:', {
-          requestId,
-          errorText,
-          errorPatterns: {
-            accessDenied: errorText.includes('access denied') || errorText.includes('not authorized'),
-            timeout: errorText.includes('timeout') || errorText.includes('timed out'),
-            bucketNotFound: errorText.includes('bucket') && errorText.includes('not found'),
-            rateLimit: errorText.includes('rate limit') || errorText.includes('throttling'),
-            network: errorText.includes('network')
-          }
-        });
         
         if (errorText.includes('access denied') || errorText.includes('not authorized')) {
           errorMessage = 'AWS access denied. Please check your credentials and permissions.';
@@ -656,12 +426,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         }
       }
       
-      console.log('💬 ERROR UI FEEDBACK: Showing error message', {
-        requestId,
-        errorMessage,
-        errorDuration: '8 seconds'
-      });
-      
       // Show error message with more details
       message.error({
         content: errorMessage,
@@ -673,34 +437,10 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         }
       });
       
-      console.log('🎯 ERROR NAVIGATION: Returning to resource selection step', {
-        requestId,
-        previousStep: currentStep,
-        newStep: 2,
-        reason: 'Error occurred during analysis'
-      });
-      
       // Return to resource selection step instead of showing empty results
       setCurrentStep(2);
     } finally {
-      console.log('🔄 FINAL STATE UPDATE: Setting isAnalyzing to false', {
-        requestId,
-        previousState: true,
-        newState: false,
-        timestamp: new Date().toISOString()
-      });
       setIsAnalyzing(false);
-      
-      console.log('🏁 ANALYSIS CLICK EVENT COMPLETED', {
-        requestId,
-        completedAt: new Date().toISOString(),
-        finalState: {
-          isAnalyzing: false,
-          currentStep,
-          hasAnalysisResults: !!analysisResults,
-          hasCurrentAnalysisData: !!currentAnalysisData
-        }
-      });
     }
   };
 
@@ -1254,7 +994,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                       Quick Selection Presets
                     </Text>
                   </div>
-                  <Space wrap size={16}>
+                  <Space wrap size="large">
                     {presets.map(preset => (
                       <Button
                         key={preset.id}

@@ -214,178 +214,35 @@ const UnifiedResultsDisplay: React.FC<UnifiedResultsDisplayProps> = ({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['all']));
   const [pdfGenerationState, setPdfGenerationState] = useState<Record<string, any>>({});
 
-  // 🔍 RESULTS DISPLAY LOGGING: Log incoming data for debugging
-  React.useEffect(() => {
-    const debugId = `results_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log('🎯 UNIFIED RESULTS DISPLAY: Component mounted/updated', {
-      debugId,
-      timestamp: new Date().toISOString(),
-      hasData: !!data,
-      dataType: typeof data,
-      isArray: Array.isArray(data),
-      dataKeys: data && typeof data === 'object' ? Object.keys(data) : null,
-      dataLength: Array.isArray(data) ? data.length : null,
-      displayMode,
-      isStoredAnalysis,
-      apiBaseUrl
-    });
-
-    if (data) {
-      console.log('📊 RESULTS DATA STRUCTURE:', {
-        debugId,
-        data: data,
-        dataStringified: JSON.stringify(data, null, 2).substring(0, 1000) + (JSON.stringify(data).length > 1000 ? '...[truncated]' : ''),
-        dataSize: JSON.stringify(data).length
-      });
-
-      // Check for specific API response patterns
-      if (data.analysis_results) {
-        console.log('🔍 DETECTED: analysis_results pattern', {
-          debugId,
-          analysisResultsCount: data.analysis_results.length,
-          analysisResults: data.analysis_results
-        });
-      }
-
-      if (data.session_id) {
-        console.log('🔍 DETECTED: session_id pattern', {
-          debugId,
-          sessionId: data.session_id,
-          hasTimestamp: !!data.timestamp
-        });
-      }
-
-      if (data.type === 's3_bucket_analysis') {
-        console.log('🔍 DETECTED: S3 bucket analysis pattern', {
-          debugId,
-          bucketName: data.data?.bucket_name,
-          totalFiles: data.data?.total_files
-        });
-      }
-
-      // Check if data has resource-based structure
-      const resourceKeys = Object.keys(data).filter(key => 
-        data[key] && typeof data[key] === 'object' && 
-        (data[key].resources || data[key].detectionResults || data[key].drift_result)
-      );
-      
-      if (resourceKeys.length > 0) {
-        console.log('🔍 DETECTED: Resource-based structure', {
-          debugId,
-          resourceKeys,
-          resourceCount: resourceKeys.length
-        });
-      }
-    } else {
-      console.log('❌ NO DATA: UnifiedResultsDisplay received null/undefined data', {
-        debugId,
-        data,
-        displayMode,
-        isStoredAnalysis
-      });
-    }
-  }, [data, displayMode, isStoredAnalysis, apiBaseUrl]);
-
   /**
    * Detect the data format and determine display mode
    */
   const detectedFormat = useMemo(() => {
-    const debugId = `format_detection_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log('🔍 FORMAT DETECTION: Starting data format analysis', {
-      debugId,
-      hasData: !!data,
-      dataType: typeof data,
-      isArray: Array.isArray(data),
-      isStoredAnalysis,
-      dataKeys: data && typeof data === 'object' ? Object.keys(data) : null
-    });
-
-    if (!data) {
-      console.log('❌ FORMAT DETECTION: No data provided', { debugId });
-      return 'empty';
-    }
+    if (!data) return 'empty';
     
     // Check if this is stored analysis data
     if (isStoredAnalysis || (data.session_id && data.analysis_data)) {
-      console.log('✅ FORMAT DETECTION: Detected stored analysis format', {
-        debugId,
-        isStoredAnalysis,
-        hasSessionId: !!data.session_id,
-        hasAnalysisData: !!data.analysis_data
-      });
       return 'stored';
     }
     
     // S3 analysis format
     if (data.type === 's3_bucket_analysis' || data.data?.bucket_name) {
-      console.log('✅ FORMAT DETECTION: Detected S3 analysis format', {
-        debugId,
-        dataType: data.type,
-        bucketName: data.data?.bucket_name
-      });
       return 's3';
     }
     
     // Grouped streaming format
     if (typeof data === 'object' && !Array.isArray(data) && 
         Object.values(data).some((group: any) => group.resources)) {
-      console.log('✅ FORMAT DETECTION: Detected grouped streaming format', {
-        debugId,
-        groupKeys: Object.keys(data),
-        groupsWithResources: Object.keys(data).filter(key => data[key]?.resources)
-      });
       return 'grouped';
     }
     
     // Array of reports or drifts
     if (Array.isArray(data)) {
       if (data.length > 0 && data[0].drift_analysis) {
-        console.log('✅ FORMAT DETECTION: Detected comprehensive reports format', {
-          debugId,
-          arrayLength: data.length,
-          firstItemKeys: Object.keys(data[0])
-        });
         return 'reports'; // New comprehensive report format
       }
-      console.log('✅ FORMAT DETECTION: Detected legacy drift format', {
-        debugId,
-        arrayLength: data.length,
-        firstItemKeys: data.length > 0 ? Object.keys(data[0]) : []
-      });
       return 'legacy'; // Legacy drift format
     }
-    
-    // Check for resource-based format (like S3StreamingAnalysis resourceResults)
-    if (typeof data === 'object' && !Array.isArray(data)) {
-      const resourceKeys = Object.keys(data).filter(key => 
-        data[key] && typeof data[key] === 'object' && 
-        (data[key].detectionResults || data[key].drift_result || data[key].status)
-      );
-      
-      if (resourceKeys.length > 0) {
-        console.log('✅ FORMAT DETECTION: Detected resource-based format', {
-          debugId,
-          resourceKeys,
-          resourceCount: resourceKeys.length
-        });
-        return 'resource_based';
-      }
-    }
-    
-    console.log('❓ FORMAT DETECTION: Unknown format detected', {
-      debugId,
-      dataStructure: {
-        type: typeof data,
-        isArray: Array.isArray(data),
-        keys: data && typeof data === 'object' ? Object.keys(data) : null,
-        hasSessionId: !!data.session_id,
-        hasAnalysisData: !!data.analysis_data,
-        hasType: !!data.type,
-        hasDataProperty: !!data.data
-      }
-    });
     
     return 'unknown';
   }, [data, isStoredAnalysis]);

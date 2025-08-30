@@ -27,7 +27,6 @@ import {
 } from "interfaces";
 import { CodescanIcon, DiagnosticsIcon, PipelineIcon, ToilAssistIcon, TraceAssistIcon, DriftAssistIcon, DashboardAssistIcon, SLOSLIIcon } from "assets";
 import {
-  ConfigureDriftAssist,
   ConfigureGremlin,
   ConfigureInfra,
   ConfigureRepositories,
@@ -38,6 +37,7 @@ import { ConfigureToilAssist } from "components/ConfigureToilAssist";
 import { useCreateApplication } from "context";
 import { Metrics } from "themes";
 import ConfigureTraceAssist from "components/ConfigureTraceAssist/ConfigureTraceAssist"; // === CHANGED
+import { DriftAssistAccountDrawer } from "components/DriftAssist";
 
 const servicePriorityMap: Record<number, number> = {
   1: 1,
@@ -419,15 +419,20 @@ const WorkFlowConfiguration: React.FC = () => {
           onSuccess={() => setIsTraceAssistDrawerOpen(false)} // === CHANGED: close drawer on success
         />
       </Drawer>
-      <ConfigureDriftAssist
-        isOpen={isDriftAssistDrawerOpen}
+      <Drawer
+        title="Configure Drift Assist"
+        open={isDriftAssistDrawerOpen}
+        hideFooter={true} 
         onClose={() => setIsDriftAssistDrawerOpen(false)}
-        onSuccess={async () => {
-          await applicationDetailsQuery.refetch();
-          setIsDriftAssistDrawerOpen(false);
-        }}
-        projectId={applicationDetailsQuery?.data?.project_id?.toString()}
-      />
+        onCancel={() => setIsDriftAssistDrawerOpen(false)}
+        disabled={disabledSave}
+        loading={isLoading}
+      >
+        <DriftAssistAccountDrawer
+          projectId={applicationDetailsQuery?.data?.project_id?.toString()}
+          onAccountSelected={() => setIsDriftAssistDrawerOpen(false)}
+        />
+      </Drawer>
       <ConfigureGremlin
         isOpen={isOpenConfigureGremlin}
         onSuccess={async () => {

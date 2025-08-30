@@ -61,8 +61,6 @@ interface AnalyzeBucketResponse {
   }>;
   type: string;
   intelligent_analysis: boolean;
-  session_id?: string;
-  timestamp?: number;
 }
 
 // API Functions
