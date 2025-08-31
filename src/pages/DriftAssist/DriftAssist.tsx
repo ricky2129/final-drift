@@ -206,40 +206,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     checkBackendHealth();
   }, []);
 
-  // Add network request monitoring
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-      console.log('🌐 FETCH REQUEST INTERCEPTED:', {
-        url: args[0],
-        method: args[1]?.method || 'GET',
-        headers: args[1]?.headers,
-        body: args[1]?.body ? 'Has body' : 'No body'
-      });
-      
-      return originalFetch.apply(this, args)
-        .then(response => {
-          console.log('📥 FETCH RESPONSE:', {
-            url: response.url,
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok
-          });
-          return response;
-        })
-        .catch(error => {
-          console.log('❌ FETCH ERROR:', {
-            url: args[0],
-            error: error.message
-          });
-          throw error;
-        });
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, []);
 
   // API hooks
   const { data: s3BucketsData, isLoading: isLoadingBuckets, error: bucketsError } = useGetS3Buckets(currentSessionId, !!currentSessionId);
@@ -397,38 +363,17 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   };
 
   const handleAnalyze = async () => {
-    // 🔥 DEBUG: Comprehensive logging at the start
-    console.log('🚀 ANALYZE BUTTON CLICKED!');
-    console.log('📊 Current State:', {
-      currentSessionId,
-      selectedBucket,
-      selectedCount,
-      stateFilesLength: stateFiles.length,
-      currentStep,
-      isAnalyzing,
-      resourceTypesCount: resourceTypes.length
-    });
-    console.log('📋 Selected Resources:', resourceTypes.filter(r => r.selected).map(r => ({ id: r.id, name: r.name })));
-    console.log('📄 State Files:', stateFiles.map(f => ({ key: f.key, size: f.size })));
-    console.log('🔗 API Endpoint:', DriftAssistUrl.ANALYZE_BUCKET);
+    console.log('🚀 Starting drift analysis...');
 
     if (!currentSessionId || !selectedBucket || selectedCount === 0) {
-      console.log('❌ VALIDATION FAILED: Missing requirements', {
-        hasSessionId: !!currentSessionId,
-        hasSelectedBucket: !!selectedBucket,
-        selectedCount
-      });
       message.error('Please select a bucket and at least one resource type');
       return;
     }
 
     if (stateFiles.length === 0) {
-      console.log('❌ VALIDATION FAILED: No state files');
       message.error(`Selected bucket '${selectedBucket}' has no state files.`);
       return;
     }
-
-    console.log('✅ VALIDATION PASSED - Starting API call...');
 
     try {
       setIsAnalyzing(true);
