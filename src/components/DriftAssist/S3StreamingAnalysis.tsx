@@ -647,59 +647,6 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
     }
   };
 
-  /**
-   * Render drift detection results (legacy function for backward compatibility)
-   */
-  const renderDetectionResults = useCallback((detectionData: any) => {
-    if (!detectionData) return null;
-
-    let drifts: any[] = [];
-    if (detectionData.drifts && Array.isArray(detectionData.drifts)) {
-      drifts = detectionData.drifts;
-    } else if (Array.isArray(detectionData)) {
-      drifts = detectionData;
-    } else if (detectionData.differences && Array.isArray(detectionData.differences)) {
-      drifts = detectionData.differences;
-    }
-
-    if (!drifts || drifts.length === 0) {
-      return null;
-    }
-
-    return (
-      <div>
-        <Alert 
-          message={`${drifts.length} Drift${drifts.length !== 1 ? 's' : ''} Detected`}
-          description="Infrastructure configuration differs from expected state."
-          type="warning" 
-          showIcon 
-          icon={<WarningOutlined />}
-          style={{ marginBottom: 16 }}
-        />
-
-        <Space direction="vertical" style={{ width: '100%' }}>
-          {drifts.map((drift: any, index: number) => (
-            <Card key={index} size="small" style={{ borderLeft: '4px solid #ff9800' }}>
-              <Title level={5} style={{ margin: 0, marginBottom: 8 }}>
-                {drift.type || 'Configuration Drift'}
-              </Title>
-              {drift.details && (
-                <Paragraph style={{ margin: 0, marginBottom: 8, color: '#666' }}>
-                  {drift.details}
-                </Paragraph>
-              )}
-              {drift.resource && (
-                <Badge 
-                  text={`Resource: ${drift.resource}`}
-                  color="blue"
-                />
-              )}
-            </Card>
-          ))}
-        </Space>
-      </div>
-    );
-  }, []);
 
   /**
    * Render beautiful resource card with direct report display
@@ -1169,26 +1116,6 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
             </Row>
           )}
 
-          {/* No Resources Message */}
-          {!isAnalyzing && resources.length === 0 && (
-            <Alert
-              message="No Resources Found"
-              description="No AWS resources were detected in this state file for analysis."
-              type="info"
-              showIcon
-            />
-          )}
-
-          {/* Completion Message */}
-          {analysisComplete && (
-            <Alert
-              message="Analysis Complete"
-              description={`Infrastructure drift analysis completed for ${fileName}`}
-              type="success"
-              showIcon
-              style={{ marginTop: 16 }}
-            />
-          )}
           </div>
         </Card>
       </div>

@@ -44,8 +44,8 @@ import {
   type StateFile,
   type ConnectAWSRequest
 } from "react-query/driftAssistQueries";
-import { S3StreamingAnalysis, UnifiedResultsDisplay, StoredAnalysesCard, StoredAnalysisDisplay, DriftAssistAccountDrawer } from "components/DriftAssist";
-import { Drawer } from "components";
+import { S3StreamingAnalysis, UnifiedResultsDisplay, StoredAnalysesCard, StoredAnalysisDisplay } from "components/DriftAssist";
+import { ConfigureDriftAssist, Drawer } from "components";
 import { DriftAssistUrl } from "constant/url.constant";
 import "./DriftAssist.styles.scss";
 
@@ -1706,7 +1706,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
 
       {/* New Connection Drawer */}
       <Drawer
-        title="Configure Drift Assist Account"
+        title="Configure Drift Assist"
         open={isDrawerOpen}
         hideFooter={true}
         onClose={() => setIsDrawerOpen(false)}
@@ -1714,25 +1714,41 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         disabled={false}
         loading={false}
       >
-        <DriftAssistAccountDrawer
-          projectId={projectId}
-          onAccountSelected={(accountData) => {
-            // Close drawer first
+        <ConfigureDriftAssist
+          configureDriftAssistForm={drawerForm}
+          setDisabledSave={() => {}}
+          skipNavigation={true}
+          onFinish={() => {
+            // The ConfigureDriftAssist component handles the connection logic
+            // and stores the session data. We just need to close the drawer
+            // and update our local state from the stored session data.
             setIsDrawerOpen(false);
             
-            // Update session and credentials from selected account
-            if (accountData?.sessionId && accountData?.credentials) {
-              setCurrentSessionId(accountData.sessionId);
-              setCurrentAwsCredentials(accountData.credentials);
-              
-              // Reset to bucket selection step
-              setCurrentStep(0);
-              setSelectedBucket(undefined);
-              setStateFiles([]);
-              
-              message.success('Successfully connected to AWS account! You can now select a bucket.');
-            } else {
-              message.error('Failed to retrieve account credentials. Please try again.');
+            // Read the session data that ConfigureDriftAssist stored
+            try {
+              const storedSession = sessionStorage.getItem('driftAssistSession');
+              if (storedSession) {
+                const session = JSON.parse(storedSession);
+                
+                if (session.sessionId && session.awsCredentials) {
+                  setCurrentSessionId(session.sessionId);
+                  setCurrentAwsCredentials(session.awsCredentials);
+                  
+                  // Reset to bucket selection step
+                  setCurrentStep(0);
+                  setSelectedBucket(undefined);
+                  setStateFiles([]);
+                  
+                  message.success('Successfully connected to AWS! You can now select a bucket.');
+                } else {
+                  message.error('Failed to retrieve connection details. Please try again.');
+                }
+              } else {
+                message.error('Connection data not found. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error reading session data:', error);
+              message.error('Failed to process connection. Please try again.');
             }
           }}
         />
