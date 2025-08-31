@@ -447,19 +447,6 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
             </div>
           </div>
 
-          {driftCount > 0 && (
-            <Alert 
-              message={`⚠️ ${driftCount} Configuration Issue${driftCount !== 1 ? 's' : ''} Detected`}
-              description="Infrastructure configuration differs from expected state. Review the detailed analysis below for remediation guidance."
-              type="warning" 
-              showIcon={false}
-              style={{ 
-                background: 'transparent',
-                border: 'none',
-                padding: 0
-              }}
-            />
-          )}
         </div>
 
         {/* Detailed Analysis */}
@@ -597,27 +584,6 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
           </>
         )}
 
-        {/* No Drift - Best Practices */}
-        {driftCount === 0 && (
-          <>
-            <Title level={4} style={{ color: '#262626', marginBottom: 16 }}>
-              🎉 Excellent Infrastructure Management
-            </Title>
-            
-            <div style={{ 
-              background: '#f6ffed',
-              border: '1px solid #b7eb8f',
-              borderRadius: '8px',
-              padding: '16px'
-            }}>
-              <Text style={{ color: '#595959', fontSize: '14px', lineHeight: 1.6 }}>
-                Your {resource.name.toLowerCase()} infrastructure is perfectly aligned with your IaC configuration. 
-                This indicates excellent infrastructure governance and change management practices. 
-                Continue monitoring regularly to maintain this high standard.
-              </Text>
-            </div>
-          </>
-        )}
       </div>
     );
   }, []);
