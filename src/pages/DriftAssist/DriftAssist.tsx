@@ -83,11 +83,9 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     currentAnalysisData,
     analysisResults,
     isAnalyzing,
-    analysisComplete,
     setCurrentAnalysisData,
     setAnalysisResults,
     setIsAnalyzing,
-    setAnalysisComplete,
     hasPersistedState,
     loadStateFromStorage,
     hasStarted,
@@ -223,17 +221,17 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
     });
   }, [analyzeBucketMutation.isPending, analyzeBucketMutation.isError, analyzeBucketMutation.isSuccess]);
   
-  // Stored analyses hooks
+  // Stored analyses hooks - only fetch when viewing stored analyses
   const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = useListStoredAnalyses(
-    projectId || '', 
-    applicationId || '', 
-    !!(projectId && applicationId)
+    projectId || '',
+    applicationId || '',
+    !!(projectId && applicationId && currentStep === 5)
   );
   const { data: selectedStoredAnalysis, isLoading: isLoadingSelectedAnalysis } = useGetStoredAnalysis(
-    projectId || '', 
-    applicationId || '', 
-    selectedAnalysisId || 0, 
-    !!(projectId && applicationId && selectedAnalysisId)
+    projectId || '',
+    applicationId || '',
+    selectedAnalysisId || 0,
+    !!(projectId && applicationId && selectedAnalysisId && currentStep === 6)
   );
 
   // Update state files when data changes
@@ -380,13 +378,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         .filter(resource => resource.selected)
         .map(resource => resource.id);
 
-      console.log('🚀 Starting analysis with:', {
-        sessionId: currentSessionId,
-        bucket: selectedBucket,
-        resources: selectedResources,
-        stateFilesCount: stateFiles.length
-      });
-
       // Show immediate feedback
       message.loading('Initializing drift analysis...', 2);
 
@@ -397,8 +388,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         selected_resources: selectedResources
       });
 
-      console.log('📊 Bucket analysis result:', bucketAnalysisResult);
-
       // Set the analysis results for the results tab
       setAnalysisResults(bucketAnalysisResult);
 
@@ -407,10 +396,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         (file: any) => file.status === 'ready_for_analysis'
       );
 
-      console.log('🔍 Ready file found:', readyFile);
-
       if (readyFile && readyFile.analysis_data) {
-        console.log('✅ Setting analysis data and moving to step 3:', readyFile.analysis_data);
         setCurrentAnalysisData(readyFile.analysis_data);
         
         // Skip loading page and go directly to streaming analysis
@@ -426,7 +412,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
           message.success('Starting drift analysis...');
         }
       } else {
-        console.log('⚠️ No ready file found, moving to results step');
         setCurrentStep(4); // Move to results step
         message.warning('No state files ready for analysis. Check results for details.');
       }
@@ -1241,15 +1226,8 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         );
 
       case 3:
-        console.log('🎬 Rendering step 3 - Analysis step');
-        console.log('📊 Current analysis data:', currentAnalysisData);
         return currentAnalysisData ? (
           <div>
-            {console.log('✅ Rendering S3StreamingAnalysis component with data:', {
-              analysisData: currentAnalysisData,
-              fileName: currentAnalysisData.fileName,
-              apiBaseUrl: (import.meta as any).env?.VITE_DRIFT_ASSIST_URL || 'http://localhost:8004'
-            })}
             {/* Start New Analysis Button */}
             <div style={{
               margin: '24px 24px 0 24px',
