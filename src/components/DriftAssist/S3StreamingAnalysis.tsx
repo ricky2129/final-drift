@@ -144,7 +144,16 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
    * Start the streaming analysis for S3 state file
    */
   const startAnalysis = useCallback(async () => {
+    console.log('🚀 S3StreamingAnalysis: startAnalysis called');
+    console.log('📊 Analysis conditions:', {
+      hasAnalysisData: !!analysisData,
+      isAnalyzing,
+      hasStarted,
+      analysisStartedRef: analysisStartedRef.current
+    });
+
     if (!analysisData || isAnalyzing || hasStarted || analysisStartedRef.current) {
+      console.log('❌ S3StreamingAnalysis: Analysis blocked by conditions');
       return;
     }
 
@@ -157,25 +166,36 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
     setResourceResults({});
     setAnalysisComplete(false);
 
+    const requestPayload = {
+      session_id: analysisData.sessionId,
+      selected_resources: analysisData.selectedResources,
+      state_data: analysisData.stateData,
+      file_name: analysisData.fileName,
+      file_key: analysisData.fileKey,
+      source: analysisData.source,
+      bucket_name: analysisData.bucketName,
+      terraformAnalysis: analysisData.terraformAnalysis,
+      configurationSummary: analysisData.configurationSummary,
+      project_id: projectId,
+      application_id: applicationId
+    };
+
+    console.log('🌐 S3StreamingAnalysis: Making API call to:', `${apiBaseUrl}/api/s3/analyze-state-file-stream`);
+    console.log('📝 S3StreamingAnalysis: Request payload:', requestPayload);
+
     try {
       const response = await fetch(`${apiBaseUrl}/api/s3/analyze-state-file-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: analysisData.sessionId,
-          selected_resources: analysisData.selectedResources,
-          state_data: analysisData.stateData,
-          file_name: analysisData.fileName,
-          file_key: analysisData.fileKey,
-          source: analysisData.source,
-          bucket_name: analysisData.bucketName,
-          terraformAnalysis: analysisData.terraformAnalysis,
-          configurationSummary: analysisData.configurationSummary,
-          project_id: projectId,
-          application_id: applicationId
-        })
+        body: JSON.stringify(requestPayload)
+      });
+
+      console.log('📡 S3StreamingAnalysis: API response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
       });
 
       if (!response.ok) {
@@ -348,8 +368,20 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
    * Start analysis when component mounts
    */
   useEffect(() => {
+    console.log('🔄 S3StreamingAnalysis: useEffect triggered');
+    console.log('📊 S3StreamingAnalysis: Effect conditions:', {
+      hasAnalysisData: !!analysisData,
+      hasStarted,
+      isAnalyzing,
+      fileName,
+      willStartAnalysis: !!(analysisData && !hasStarted && !isAnalyzing)
+    });
+    
     if (analysisData && !hasStarted && !isAnalyzing) {
+      console.log('✅ S3StreamingAnalysis: Calling startAnalysis()');
       startAnalysis();
+    } else {
+      console.log('❌ S3StreamingAnalysis: Not calling startAnalysis due to conditions');
     }
   }, [analysisData, hasStarted, isAnalyzing, fileName, startAnalysis]);
 
