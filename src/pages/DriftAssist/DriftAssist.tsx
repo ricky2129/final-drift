@@ -215,13 +215,13 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   // Add mutation state monitoring
   useEffect(() => {
     console.log('🔄 Mutation State Changed:', {
-      isLoading: analyzeBucketMutation.isLoading,
+      isPending: analyzeBucketMutation.isPending,
       isError: analyzeBucketMutation.isError,
       error: analyzeBucketMutation.error?.message,
       isSuccess: analyzeBucketMutation.isSuccess,
       data: analyzeBucketMutation.data ? 'Has data' : 'No data'
     });
-  }, [analyzeBucketMutation.isLoading, analyzeBucketMutation.isError, analyzeBucketMutation.isSuccess]);
+  }, [analyzeBucketMutation.isPending, analyzeBucketMutation.isError, analyzeBucketMutation.isSuccess]);
   
   // Stored analyses hooks
   const { data: storedAnalysesData, isLoading: isLoadingStoredAnalyses, error: storedAnalysesError } = useListStoredAnalyses(
@@ -753,7 +753,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                       type="primary"
                       htmlType="submit"
                       size="large"
-                      loading={connectToAWSMutation.isLoading}
+                      loading={connectToAWSMutation.isPending}
                       style={{ minWidth: 200 }}
                     >
                       Connect to AWS
@@ -1045,7 +1045,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                       Quick Selection Presets
                     </Text>
                   </div>
-                  <Space wrap size="large">
+                  <Space wrap size={24}>
                     {presets.map(preset => (
                       <Button
                         key={preset.id}
@@ -1076,7 +1076,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                   borderRadius: 8,
                   border: '1px solid #e9ecef'
                 }}>
-                  <Space size="medium">
+                  <Space size={16}>
                     <Button 
                       icon={<CheckCircleOutlined />} 
                       onClick={handleSelectAll}
