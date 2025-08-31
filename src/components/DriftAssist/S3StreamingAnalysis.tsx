@@ -447,19 +447,7 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
             </div>
           </div>
 
-          {driftCount === 0 ? (
-            <Alert 
-              message="✅ No Infrastructure Drift Detected"
-              description="Excellent! Your resources match the expected configuration perfectly. Infrastructure is compliant with IaC definitions."
-              type="success" 
-              showIcon={false}
-              style={{ 
-                background: 'transparent',
-                border: 'none',
-                padding: 0
-              }}
-            />
-          ) : (
+          {driftCount > 0 && (
             <Alert 
               message={`⚠️ ${driftCount} Configuration Issue${driftCount !== 1 ? 's' : ''} Detected`}
               description="Infrastructure configuration differs from expected state. Review the detailed analysis below for remediation guidance."
@@ -709,16 +697,7 @@ const S3StreamingAnalysis: React.FC<S3StreamingAnalysisProps> = ({
     }
 
     if (!drifts || drifts.length === 0) {
-      return (
-        <Alert 
-          message="No Infrastructure Drift Detected"
-          description="Your resources match the expected configuration. Infrastructure is compliant with IaC definitions."
-          type="success" 
-          showIcon 
-          icon={<CheckCircleOutlined />}
-          style={{ marginBottom: 16 }}
-        />
-      );
+      return null;
     }
 
     return (
