@@ -363,8 +363,6 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
   };
 
   const handleAnalyze = async () => {
-    console.log('🚀 Starting drift analysis...');
-
     if (!currentSessionId || !selectedBucket || selectedCount === 0) {
       message.error('Please select a bucket and at least one resource type');
       return;
@@ -382,18 +380,9 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         .filter(resource => resource.selected)
         .map(resource => resource.id);
 
-      console.log('🎯 Prepared API call data:', {
-        session_id: currentSessionId,
-        bucket_name: selectedBucket,
-        selected_resources: selectedResources,
-        endpoint: DriftAssistUrl.ANALYZE_BUCKET
-      });
-
       // Show immediate feedback
       message.loading('Initializing drift analysis...', 2);
 
-      console.log('📡 Making API call to analyzeBucketMutation...');
-      
       // First, call the bucket analysis API to prepare all state files
       const bucketAnalysisResult = await analyzeBucketMutation.mutateAsync({
         session_id: currentSessionId,
@@ -401,54 +390,32 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
         selected_resources: selectedResources
       });
 
-      console.log('✅ API call successful! Response:', bucketAnalysisResult);
-
       // Set the analysis results for the results tab
       setAnalysisResults(bucketAnalysisResult);
 
-      // Check if analysis is already completed
-      const hasCompletedResults = bucketAnalysisResult.analysis_results?.some(
-        (file: any) => file.status === 'completed' || file.analysis_data
+      // Find the first ready state file for streaming analysis
+      const readyFile = bucketAnalysisResult.analysis_results?.find(
+        (file: any) => file.status === 'ready_for_analysis'
       );
 
-      if (hasCompletedResults) {
-        // Analysis is already complete, go directly to results
-        setCurrentStep(4);
-        setAnalysisComplete(true);
-        message.success('Analysis completed! View results below.');
+      if (readyFile && readyFile.analysis_data) {
+        setCurrentAnalysisData(readyFile.analysis_data);
+        
+        // Skip loading page and go directly to streaming analysis
+        setCurrentStep(3);
         
         // Navigate to workflow tab if callback is provided
         if (onNavigateToWorkflow) {
           setTimeout(() => {
             onNavigateToWorkflow();
-            message.success('Analysis completed! Check results in Workflows tab.');
+            message.success('Analysis started! Monitoring live progress...');
           }, 1000);
+        } else {
+          message.success('Starting drift analysis...');
         }
       } else {
-        // Find the first ready state file for streaming analysis
-        const readyFile = bucketAnalysisResult.analysis_results?.find(
-          (file: any) => file.status === 'ready_for_analysis'
-        );
-
-        if (readyFile && readyFile.analysis_data) {
-          setCurrentAnalysisData(readyFile.analysis_data);
-          
-          // Go to streaming analysis for live processing
-          setCurrentStep(3);
-          
-          // Navigate to workflow tab if callback is provided
-          if (onNavigateToWorkflow) {
-            setTimeout(() => {
-              onNavigateToWorkflow();
-              message.success('Analysis started! Monitoring live progress...');
-            }, 1000);
-          } else {
-            message.success('Starting drift analysis...');
-          }
-        } else {
-          setCurrentStep(4); // Move to results step
-          message.warning('No state files ready for analysis. Check results for details.');
-        }
+        setCurrentStep(4); // Move to results step
+        message.warning('No state files ready for analysis. Check results for details.');
       }
       
     } catch (error) {
@@ -481,7 +448,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
       message.error({
         content: errorMessage,
         duration: 8, // Show for longer time
-        style: { 
+        style: {
           borderRadius: '8px',
           padding: '12px 16px',
           boxShadow: '0 3px 6px -4px rgba(0, 0, 0, 0.12)'
@@ -753,7 +720,7 @@ const DriftAssist: React.FC<DriftAssistProps> = ({
                       type="primary"
                       htmlType="submit"
                       size="large"
-                      loading={connectToAWSMutation.isPending}
+                      loading={connectToAWSMutation.isLoading}
                       style={{ minWidth: 200 }}
                     >
                       Connect to AWS
